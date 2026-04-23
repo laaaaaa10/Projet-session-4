@@ -1,0 +1,20 @@
+idf_component_register(
+    SRCS
+        "app_main.c"
+        "drivers/button.c"
+        "drivers/joystick.c"
+        "driver/bt_spp_client.c"
+        "modules/control.c"
+        "modules/protocol.c"
+        "app/app_tasks.c"
+
+    INCLUDE_DIRS
+        "."
+        "drivers"
+        "modules"
+        "app"
+    REQUIRES
+        bt
+        nvs_flash
+        driver
+)

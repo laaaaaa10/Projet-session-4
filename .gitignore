@@ -1,55 +1,101 @@
-# Prerequisites
-*.d
+# =========================================================
+# BUILD OUTPUTS (ESP32 / STM32 / C / C++)
+# =========================================================
 
-# Object files
-*.o
-*.ko
-*.obj
-*.elf
+# Generic build folders
+build/
+cmake-build-*/
+out/
+bin/
+obj/
 
-# Linker output
-*.ilk
+# ESP-IDF
+sdkconfig
+sdkconfig.old
+dependencies.lock
 *.map
-*.exp
-
-# Precompiled Headers
-*.gch
-*.pch
-
-# Libraries
-*.lib
-*.a
-*.la
-*.lo
-
-# Shared objects (inc. Windows DLLs)
-*.dll
-*.so
-*.so.*
-*.dylib
-
-# Executables
-*.exe
-*.out
-*.app
-*.i*86
-*.x86_64
+*.elf
+*.bin
 *.hex
 
-# Debug files
-*.dSYM/
+# STM32 (CubeIDE / GCC / HAL)
+Debug/
+Release/
+*.axf
+*.d
+*.o
 *.su
-*.idb
-*.pdb
+*.elf
+*.hex
+*.bin
+*.map
 
-# Kernel Module Compile Results
-*.mod*
-*.cmd
-.tmp_versions/
-modules.order
-Module.symvers
-Mkfile.old
-dkms.conf
+# =========================================================
+# ESP-IDF / FLASH / TOOLING
+# =========================================================
+monitor_log.txt
+flasher_args.json
+flash_args
+flash_project_args
 
-# debug information files
-*.dwo
+# =========================================================
+# STM32CubeIDE / STM32CubeMX
+# =========================================================
+*.launch
+*.ioc.old
+*.ioc_backup
+
+# =========================================================
+# CMAKE / NINJA
+# =========================================================
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+ninja.log
+
+# =========================================================
+# VS CODE
+# =========================================================
+.vscode/
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/tasks.json
+!.vscode/launch.json
+
+# =========================================================
+# VISUAL STUDIO (if ever used)
+# =========================================================
+.vs/
+*.suo
+*.user
+*.VC.db
+*.VC.VC.opendb
+
+# =========================================================
+# PLATFORMIO (if ever used)
+# =========================================================
+.pio/
+.piolibdeps/
+
+# =========================================================
+# PYTHON (ESP-IDF tools)
+# =========================================================
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+venv/
+.venv/
+
+# =========================================================
+# OS FILES
+# =========================================================
+.DS_Store
+Thumbs.db
+
+# =========================================================
+# LOGS
+# =========================================================
+*.log
