@@ -273,8 +273,13 @@ static void BuildManualMotorCommand(motor_cmd_t *mcmd)
      * - si speed = 0 et turn = 0, mettre coast = true
      * - si STOP est appuyé, arrêter le véhicule
      */
+    
+    int16_t speed = clamp100(g_vc.last_cmd.speed);
+    mcmd->left_cmd = speed;
+    mcmd->right_cmd = speed;
+    mcmd->coast = (speed == 0);
 
-    MotorCommand_Clear(mcmd);
+    //MotorCommand_Clear(mcmd);
 }
 
 /*

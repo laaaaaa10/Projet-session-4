@@ -245,7 +245,7 @@ bool VehicleMotors_HasError(void)
 void VehicleMotors_SetLeftRight(int16_t left_cmd, int16_t right_cmd)
 {
     LeftSide_SetSignedSpeed(left_cmd);
-    RightSide_SetSignedSpeed(-right_cmd);
+    RightSide_SetSignedSpeed(right_cmd);
 }
 
 void VehicleMotors_AllCoast(void)
