@@ -275,9 +275,12 @@ static void BuildManualMotorCommand(motor_cmd_t *mcmd)
      */
     
     int16_t speed = clamp100(g_vc.last_cmd.speed);
-    mcmd->left_cmd = speed;
-    mcmd->right_cmd = speed;
-    mcmd->coast = (speed == 0);
+    int16_t turn  = clamp100(g_vc.last_cmd.turn);
+
+    mcmd->left_cmd  = clamp100((int16_t)(speed + turn));
+    mcmd->right_cmd = clamp100((int16_t)(speed - turn));
+
+    mcmd->coast = (speed == 0 && turn == 0);  
 
     //MotorCommand_Clear(mcmd);
 }
