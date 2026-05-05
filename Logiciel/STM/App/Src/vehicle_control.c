@@ -253,26 +253,9 @@ static void BuildIdleMotorCommand(motor_cmd_t *mcmd)
  */
 static void BuildManualMotorCommand(motor_cmd_t *mcmd)
 {
-    if (mcmd == NULL)
+    if (mcmd == NULL) {
         return;
-
-    /*
-     * TODO 1 : Mode manuel
-     *
-     * Objectif :
-     * - speed contrôle l'avance/recul
-     * - turn contrôle la rotation
-     * - trim corrige l'écart gauche/droite
-     *
-     * Indices :
-     * left_cmd  = speed + turn corrigé
-     * right_cmd = speed - turn corrigé
-     *
-     * Attention :
-     * - utiliser clamp100()
-     * - si speed = 0 et turn = 0, mettre coast = true
-     * - si STOP est appuyé, arrêter le véhicule
-     */
+    }
     
     int16_t speed = clamp100(g_vc.last_cmd.speed);
     int16_t turn  = clamp100(g_vc.last_cmd.turn);
@@ -314,6 +297,12 @@ static void BuildLineFollowMotorCommand(motor_cmd_t *mcmd)
      * - line_seen_once
      * - last_seen_dir
      */
+    if (g_vc.line_state == LINE_STATE_LEFT || g_vc.line_state == LINE_STATE_RIGHT || g_vc.line_state == LINE_STATE_CENTER)
+    {
+        g_vc.line_seen_once = true;
+        g_vc.last_seen_dir = g_vc.line_state;
+        g_vc.line_lost_ticks = 0;
+    
 
     /*
      * TODO 3 : Suiveur de ligne
@@ -333,7 +322,53 @@ static void BuildLineFollowMotorCommand(motor_cmd_t *mcmd)
      *    - sinon tourner dans la direction de la dernière ligne vue
      */
 
-    MotorCommand_Clear(mcmd);
+        g_vc.line_error_integral += g_vc.line_error;
+        if (g_vc.line_error_integral > LF_INTEGRAL_MAX)
+            g_vc.line_error_integral = LF_INTEGRAL_MAX;
+        if (g_vc.line_error_integral < -LF_INTEGRAL_MAX)
+            g_vc.line_error_integral = -LF_INTEGRAL_MAX;
+
+        // correction PID
+        g_vc.line_error_filt = LF_KP * g_vc.line_error
+                             + LF_KD * (g_vc.line_error - g_vc.line_error_prev)
+                             + LF_KI * g_vc.line_error_integral; 
+
+        if (g_vc.line_error_filt > LF_CORR_MAX)
+            g_vc.line_error_filt = LF_CORR_MAX;
+        if (g_vc.line_error_filt < -LF_CORR_MAX)
+            g_vc.line_error_filt = -LF_CORR_MAX;
+
+        g_vc.line_error_prev = g_vc.line_error;
+
+        mcmd->left_cmd = clamp100(LF_SPEED_CENTER - g_vc.line_error_filt);
+        mcmd->right_cmd = clamp100(LF_SPEED_CENTER + g_vc.line_error_filt);
+        mcmd->coast = false;
+    }
+
+    // Si la ligne est perdue, on lance une recherche temporaire
+    else if (g_vc.line_state == LINE_STATE_LOST)
+    {
+        g_vc.line_lost_ticks++;
+
+        if (!g_vc.line_seen_once || g_vc.line_lost_ticks > LF_LOST_TIMEOUT_TICKS)
+        {
+            MotorCommand_Clear(mcmd);  /* timeout : arrêt */
+            return;
+        }
+
+        /* Pivoter vers le dernier côté vu */
+        if (g_vc.last_seen_dir == LINE_STATE_LEFT)
+        {
+            mcmd->left_cmd  = LF_SEARCH_LEFT_MOTOR;
+            mcmd->right_cmd = LF_SEARCH_RIGHT_MOTOR;
+        }
+        else
+        {
+            mcmd->left_cmd  = LF_SEARCH_RIGHT_MOTOR;
+            mcmd->right_cmd = LF_SEARCH_LEFT_MOTOR;
+        }
+        mcmd->coast = false;
+    }
 }
 
 /*

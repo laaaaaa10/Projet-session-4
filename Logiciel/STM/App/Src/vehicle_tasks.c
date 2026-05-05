@@ -423,12 +423,12 @@ static void Task_MainController(void *argument)
          * - mettre à jour last_auto_ctrl_tick
          */
 
-        /*
-        if (...)
+        if (IsAutoControlState() && (xTaskGetTickCount() - last_auto_ctrl_tick) >= pdMS_TO_TICKS(AUTO_CTRL_PERIOD_MS))
         {
-            ...
+            VehicleControl_GetMotorCommand(&mcmd);
+            PublishMotorCommand(&mcmd);
+            last_auto_ctrl_tick = xTaskGetTickCount();
         }
-        */
 
         if ((xTaskGetTickCount() - last_rx_tick) > pdMS_TO_TICKS(BT_TIMEOUT_MS))
         {
@@ -593,6 +593,11 @@ static void Task_LineSensor(void *argument)
 
         raw = 0;
 
+        if (xSemaphoreTake(g_i2c3_mutex, pdMS_TO_TICKS(5)) == pdTRUE)
+        {
+            raw = LineSensor_ReadRaw();   // retourne uint8_t, pas de paramètres
+            xSemaphoreGive(g_i2c3_mutex);
+        }
         /*
          * TODO 3 :
          * Décoder la valeur brute.
@@ -604,7 +609,15 @@ static void Task_LineSensor(void *argument)
          * - si la ligne est valide, envoyer l'erreur avec VehicleControl_SetLineError()
          */
 
-        line_state = LINE_STATE_UNKNOWN;
+        line_state = DecodeLineState(raw);
+        VehicleDisplayData_SetLineData(raw, g_line_error);
+
+        VehicleControl_SetLineState(line_state);
+
+        if (line_state != LINE_STATE_LOST  && line_state != LINE_STATE_UNKNOWN)
+        {
+            VehicleControl_SetLineError(g_line_error);
+        }
 
         vTaskDelayUntil(&lastWakeTime, pdMS_TO_TICKS(LINE_SENSOR_PERIOD_MS));
     }
