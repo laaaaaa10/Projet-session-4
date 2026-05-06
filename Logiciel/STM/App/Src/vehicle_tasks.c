@@ -423,12 +423,12 @@ static void Task_MainController(void *argument)
          * - mettre à jour last_auto_ctrl_tick
          */
 
-        /*
-        if (...)
+        if (IsAutoControlState() && (xTaskGetTickCount() - last_auto_ctrl_tick) >= pdMS_TO_TICKS(AUTO_CTRL_PERIOD_MS))
         {
-            ...
+            VehicleControl_GetMotorCommand(&mcmd);
+            PublishMotorCommand(&mcmd);
+            last_auto_ctrl_tick = xTaskGetTickCount();
         }
-        */
 
         if ((xTaskGetTickCount() - last_rx_tick) > pdMS_TO_TICKS(BT_TIMEOUT_MS))
         {
@@ -592,6 +592,11 @@ static void Task_LineSensor(void *argument)
          */
         raw = 0;
 
+        if (xSemaphoreTake(g_i2c3_mutex, pdMS_TO_TICKS(5)) == pdTRUE)
+        {
+            raw = LineSensor_ReadRaw();   // retourne uint8_t, pas de paramètres
+            xSemaphoreGive(g_i2c3_mutex);
+        }
         /*
          * TODO 3 :
          * Décoder la valeur brute.
@@ -603,7 +608,15 @@ static void Task_LineSensor(void *argument)
          * - si la ligne est valide, envoyer l'erreur avec VehicleControl_SetLineError()
          */
 
-        line_state = LINE_STATE_UNKNOWN;
+        line_state = DecodeLineState(raw);
+        VehicleDisplayData_SetLineData(raw, g_line_error);
+
+        VehicleControl_SetLineState(line_state);
+
+        if (line_state != LINE_STATE_LOST  && line_state != LINE_STATE_UNKNOWN)
+        {
+            VehicleControl_SetLineError(g_line_error);
+        }
 
         vTaskDelayUntil(&lastWakeTime, pdMS_TO_TICKS(LINE_SENSOR_PERIOD_MS));
     }
@@ -639,7 +652,7 @@ static void Task_ProximitySensors(void *argument)
     for (;;)
     {
         /*
-         * TODO 4 :
+         * TODO 4 :    (moi, javeiet vas le faire)
          * Lire les deux capteurs Sharp.
          *
          * À faire :
@@ -653,6 +666,27 @@ static void Task_ProximitySensors(void *argument)
          * Si la conversion échoue, considérer que l'objet est loin :
          * distance = 500 mm, valid = true.
          */
+        if (ReadBothSharpRaw(&raw_left, &raw_right))
+        {
+            mv_left  = SharpRawToMilliVolts(raw_left);
+            mv_right = SharpRawToMilliVolts(raw_right);
+
+        if (SHARP_2Y0A21_MilliVoltsToDistanceMm(mv_left,  &prox.left_mm)  != SHARP_2Y0A21_OK)
+            prox.left_mm = 500;
+
+        if (SHARP_2Y0A21_MilliVoltsToDistanceMm(mv_right, &prox.right_mm) != SHARP_2Y0A21_OK)
+            prox.right_mm = 500;
+
+            prox.left_valid  = true;
+            prox.right_valid = true;
+        }
+        else
+        {
+            prox.left_mm     = 500;
+            prox.right_mm    = 500;
+            prox.left_valid  = true;
+            prox.right_valid = true;
+        }
 
         /*
          * TODO 5 :
@@ -669,6 +703,18 @@ static void Task_ProximitySensors(void *argument)
          * Si aucune distance n'est reçue, considérer que rien n'est devant :
          * distance = 600 mm, valid = true.
          */
+        RCWL1601_Trigger(&hrcwl);
+        vTaskDelay(pdMS_TO_TICKS(RCWL_WAIT_MS));
+        if (RCWL1601_GetDistanceMm(&hrcwl, &dmm) == RCWL1601_OK)
+        {
+            prox.center_mm = dmm;
+            prox.center_valid = true;
+        }
+        else
+        {
+            prox.center_mm = 600;
+            prox.center_valid = true;
+        }
 
         /*
          * TODO 6 :
@@ -678,6 +724,9 @@ static void Task_ProximitySensors(void *argument)
          * - VehicleDisplayData_SetProximityData(&prox, mv_left, mv_right)
          * - VehicleControl_SetProximityData(&prox)
          */
+
+        VehicleDisplayData_SetProximityData(&prox, mv_left, mv_right);
+        VehicleControl_SetProximityData(&prox);
 
         vTaskDelayUntil(&lastWakeTime, pdMS_TO_TICKS(PROX_SENSOR_PERIOD_MS));
     }
