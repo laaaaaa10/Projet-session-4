@@ -590,7 +590,6 @@ static void Task_LineSensor(void *argument)
          * - lire les 7 capteurs avec LineSensor_ReadRaw()
          * - libérer le mutex avec xSemaphoreGive()
          */
-
         raw = 0;
 
         /*
