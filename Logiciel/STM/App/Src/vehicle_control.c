@@ -79,7 +79,7 @@ static vehicle_control_ctx_t g_vc = {0};
 #define LF_SPEED_CENTER            30
 #define LF_SPEED_MIN               20
 
-#define LF_KP                       4
+#define LF_KP                       8
 #define LF_KD                       1
 #define LF_KI                       1
 
@@ -394,7 +394,7 @@ static void BuildObstacleAvoidMotorCommand(motor_cmd_t *mcmd)
     }
 
     /*
-     * TODO 4 : Mode évitement d'obstacle
+     * TODO 4 : Mode évitement d'obstacle   (moi, javeiet vas le faire)
      *
      * Données disponibles :
      * - g_vc.prox.left_mm
@@ -426,7 +426,42 @@ static void BuildObstacleAvoidMotorCommand(motor_cmd_t *mcmd)
      * Utiliser les constantes OA_...
      */
 
-    MotorCommand_Clear(mcmd);
+    // sensor check
+    if (!g_vc.prox.left_valid && !g_vc.prox.center_valid && !g_vc.prox.right_valid)
+    {
+        MotorCommand_Clear(mcmd);  /* aucun capteur valide : arrêt */
+        return;
+    } 
+    
+    // front obstocal check
+    else if (g_vc.prox.center_mm < OA_CENTER_BACKUP_MM)
+    {   
+        mcmd->left_cmd  = OA_REVERSE_SPEED;
+        mcmd->right_cmd = OA_REVERSE_SPEED;
+    }
+
+    // tourne à droite ou gauche
+    else if (g_vc.prox.right_mm < OA_SIDE_WARN_MM)
+    {
+        mcmd->left_cmd = OA_TURN_SOFT;
+        mcmd->right_cmd = OA_TURN_BRAKE;
+    }
+    else if (g_vc.prox.left_mm < OA_SIDE_WARN_MM)
+    {
+        mcmd->left_cmd  = OA_TURN_BRAKE;
+        mcmd->right_cmd = OA_TURN_SOFT;
+    }
+
+    // avance
+    else
+    {
+        mcmd->left_cmd = OA_FORWARD_SPEED;
+        mcmd->right_cmd = OA_FORWARD_SPEED;
+    }
+    
+    mcmd->coast = false;
+
+    //MotorCommand_Clear(mcmd);
 }
 
 
