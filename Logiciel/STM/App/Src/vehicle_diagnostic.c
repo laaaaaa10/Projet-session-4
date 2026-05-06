@@ -157,40 +157,15 @@ static void HandleDownButton(void)
 
 static void HandleLeftButton(void)
 {
-    /*
-     * TODO 1 :
-     * Gérer le bouton LEFT.
-     *
-     * Objectif :
-     * - revenir au menu précédent;
-     * - remettre cursor et scroll à 0;
-     * - si on quitte le menu afficheur, remettre display_mode à DIAG_DISPLAY_MENU.
-     *
-     * Menus suggérés :
-     *
-     * DIAG_MENU_SENSORS
-     * DIAG_MENU_COMM
-     * DIAG_MENU_MOTOR_LIST
-     * DIAG_MENU_LED_LIST
-     * DIAG_MENU_DISPLAY
-     *      -> retour au menu racine
-     *
-     * DIAG_MENU_SENSOR_LINE
-     * DIAG_MENU_SENSOR_PROX
-     *      -> retour au menu capteurs
-     *
-     * DIAG_MENU_MOTOR_AVG
-     * DIAG_MENU_MOTOR_AVD
-     * DIAG_MENU_MOTOR_ARG
-     * DIAG_MENU_MOTOR_ARD
-     *      -> retour à la liste des moteurs
-     *
-     * DIAG_MENU_LED_GREEN
-     * DIAG_MENU_LED_ORANGE
-     * DIAG_MENU_LED_BLUE
-     * DIAG_MENU_LED_RED
-     *      -> retour à la liste des DEL
-     */
+	switch(g_diag.menu)
+	{
+	case DIAG_MENU_SENSORS: case DIAG_MENU_COMM: case DIAG_MENU_MOTOR_LIST: case DIAG_MENU_LED_LIST:  ReturnToRoot(); break;
+	case DIAG_MENU_SENSOR_LINE: case DIAG_MENU_SENSOR_PROX: ReturnToSensors(); break;
+	case DIAG_MENU_MOTOR_AVG: case DIAG_MENU_MOTOR_AVD: case DIAG_MENU_MOTOR_ARG: case DIAG_MENU_MOTOR_ARD: ReturnToMotorList(); break;
+	case DIAG_MENU_LED_GREEN: case DIAG_MENU_LED_ORANGE: case DIAG_MENU_LED_BLUE: case DIAG_MENU_LED_RED: ReturnToLedList(); break;
+	case DIAG_MENU_DISPLAY:	switch(g_diag.display_mode){ case DIAG_DISPLAY_ALL_ON: case DIAG_DISPLAY_ALL_OFF: g_diag.display_mode = DIAG_DISPLAY_MENU ; break;case DIAG_DISPLAY_MENU: ReturnToRoot();break;}
+	}
+
 }
 
 
@@ -199,58 +174,77 @@ static void HandleEnterButton(const control_cmd_t *cmd)
     if (cmd == NULL)
         return;
 
-    /*
-     * TODO 2 :
-     * Gérer le bouton RIGHT ou START.
-     *
-     * Objectif :
-     * Selon le menu actuel et le curseur :
-     *
-     * Menu racine :
-     *   curseur 0 -> DIAG_MENU_SENSORS
-     *   curseur 1 -> DIAG_MENU_COMM
-     *   curseur 2 -> DIAG_MENU_MOTOR_LIST
-     *   curseur 3 -> DIAG_MENU_LED_LIST
-     *   curseur 4 -> DIAG_MENU_DISPLAY
-     *
-     * Menu capteurs :
-     *   curseur 0 -> DIAG_MENU_SENSOR_LINE
-     *   curseur 1 -> DIAG_MENU_SENSOR_PROX
-     *
-     * Menu moteurs :
-     *   curseur 0 -> DIAG_MENU_MOTOR_AVG
-     *   curseur 1 -> DIAG_MENU_MOTOR_AVD
-     *   curseur 2 -> DIAG_MENU_MOTOR_ARG
-     *   curseur 3 -> DIAG_MENU_MOTOR_ARD
-     *
-     * Menu DEL :
-     *   curseur 0 -> DIAG_MENU_LED_GREEN
-     *   curseur 1 -> DIAG_MENU_LED_ORANGE
-     *   curseur 2 -> DIAG_MENU_LED_BLUE
-     *   curseur 3 -> DIAG_MENU_LED_RED
-     *
-     * Menu détail DEL :
-     *   activer la DEL sélectionnée.
-     *
-     * Menu afficheur :
-     *   alterner entre DIAG_DISPLAY_ALL_ON et DIAG_DISPLAY_ALL_OFF.
-     */
+    switch(g_diag.menu)
+    {
+    	case DIAG_MENU_ROOT:
+			switch(g_diag.cursor)
+			{
+			case 0: g_diag.menu = DIAG_MENU_SENSORS; break;
+			case 1: g_diag.menu = DIAG_MENU_COMM; break;
+			case 2: g_diag.menu = DIAG_MENU_MOTOR_LIST; break;
+			case 3: g_diag.menu = DIAG_MENU_LED_LIST; break;
+			case 4: g_diag.menu = DIAG_MENU_DISPLAY; break;
+			}
+		break;
+    	case DIAG_MENU_SENSORS:
+			switch(g_diag.cursor)
+			{
+			case 0: g_diag.menu = DIAG_MENU_SENSOR_LINE; break;
+			case 1: g_diag.menu = DIAG_MENU_SENSOR_PROX; break;
+			}
+		break;
+    	case DIAG_MENU_MOTOR_LIST:
+			switch(g_diag.cursor)
+			{
+			case 0: g_diag.menu = DIAG_MENU_MOTOR_AVG; break;
+			case 1: g_diag.menu = DIAG_MENU_MOTOR_AVD; break;
+			case 2: g_diag.menu = DIAG_MENU_MOTOR_ARG; break;
+			case 3: g_diag.menu = DIAG_MENU_MOTOR_ARD; break;
+			}
+		break;
+    	case DIAG_MENU_LED_LIST:
+			switch(g_diag.cursor)
+			{
+			case 0: g_diag.menu = DIAG_MENU_LED_GREEN; break;
+			case 1: g_diag.menu = DIAG_MENU_LED_ORANGE; break;
+			case 2: g_diag.menu = DIAG_MENU_LED_BLUE; break;
+			case 3: g_diag.menu = DIAG_MENU_LED_RED; break;
+			}
+		break;
+		case DIAG_MENU_LED_GREEN:
+			g_diag.led_green_enabled = !g_diag.led_green_enabled;
+			break;
+		case DIAG_MENU_LED_ORANGE:
+			g_diag.led_orange_enabled = !g_diag.led_orange_enabled;
+			break;
+		case DIAG_MENU_LED_BLUE:
+			g_diag.led_blue_enabled = !g_diag.led_blue_enabled;
+			break;
+		case DIAG_MENU_LED_RED:
+			g_diag.led_red_enabled = !g_diag.led_red_enabled;
+			break;
+    	case DIAG_MENU_DISPLAY:
+			switch(g_diag.display_mode)
+			{
+			case 0: g_diag.display_mode = DIAG_DISPLAY_ALL_ON; break;
+			case 1: g_diag.display_mode = DIAG_DISPLAY_ALL_ON; break;
+			case 2: g_diag.display_mode = DIAG_DISPLAY_ALL_OFF; break;
+			}
+		break;
+    }
 }
 
 
 static void HandleStopButton(void)
 {
-    /*
-     * TODO 3 :
-     * Gérer le bouton STOP en diagnostic.
-     *
-     * Objectif minimal :
-     * - éteindre les DEL de diagnostic;
-     * - remettre display_mode à DIAG_DISPLAY_MENU.
-     *
-     * Option :
-     * - revenir au menu racine.
-     */
+
+	g_diag.led_green_enabled = 0 ;
+	g_diag.led_orange_enabled = 0 ;
+	g_diag.led_blue_enabled = 0 ;
+	g_diag.led_red_enabled = 0;
+	g_diag.display_mode = DIAG_DISPLAY_MENU;
+	ReturnToRoot();
+
 }
 
 
@@ -324,21 +318,13 @@ bool VehicleDiagnostic_GetSelectedMotor(motor_target_t *motor)
     if (motor == NULL)
         return false;
 
-    /*
-     * TODO 4 :
-     * Retourner le moteur sélectionné selon le menu courant.
-     *
-     * Menus :
-     * - DIAG_MENU_MOTOR_AVG -> MOTOR_TARGET_AVG
-     * - DIAG_MENU_MOTOR_AVD -> MOTOR_TARGET_AVD
-     * - DIAG_MENU_MOTOR_ARG -> MOTOR_TARGET_ARG
-     * - DIAG_MENU_MOTOR_ARD -> MOTOR_TARGET_ARD
-     *
-     * Si aucun moteur n'est sélectionné :
-     * - mettre MOTOR_TARGET_NONE;
-     * - retourner false.
-     */
+    	switch(g_diag.menu)
+    	{
+    	case DIAG_MENU_MOTOR_AVG: *motor = MOTOR_TARGET_AVG; return true; break;
+    	case DIAG_MENU_MOTOR_AVD: *motor = MOTOR_TARGET_AVD; return true; break;
+    	case DIAG_MENU_MOTOR_ARG: *motor = MOTOR_TARGET_ARG; return true; break;
+    	case DIAG_MENU_MOTOR_ARD: *motor = MOTOR_TARGET_ARD; return true; break;
+    	case !(DIAG_MENU_MOTOR_AVG)&&!(DIAG_MENU_MOTOR_AVD)&&!(DIAG_MENU_MOTOR_ARG)&&!(DIAG_MENU_MOTOR_ARD): *motor = MOTOR_TARGET_NONE; return false; break;
+    	}
 
-    *motor = MOTOR_TARGET_NONE;
-    return false;
 }
