@@ -61,6 +61,11 @@ typedef struct
     int line_error_prev;
     int line_error_integral;
 
+
+    uint8_t  oa_attempt_count;   /* nb de cycles avance→recul */
+    uint16_t oa_window_ticks;    /* temps écoulé depuis le 1er essai */
+    bool oa_was_advancing;   /* était en train d'avancer au tick précédent */
+
 } vehicle_control_ctx_t;
 
 /*============================================================================
@@ -73,18 +78,18 @@ static vehicle_control_ctx_t g_vc = {0};
  * PRIVATE DEFINES
  *===========================================================================*/
 
-#define LF_LOST_TIMEOUT_TICKS   300		//300 x 10 ms = 3000 ms = 3 s
+#define LF_LOST_TIMEOUT_TICKS   500		//300 x 10 ms = 3000 ms = 3 s
 
 /* ===== LINE FOLLOW TUNING ===== */
-#define LF_SPEED_CENTER            30
+#define LF_SPEED_CENTER            20
 #define LF_SPEED_MIN               20
 
-#define LF_KP                       8
-#define LF_KD                       1
+#define LF_KP                       6
+#define LF_KD                       3
 #define LF_KI                       1
 
-#define LF_CORR_MAX                30
-#define LF_SPEED_REDUCTION_STEP     1
+#define LF_CORR_MAX                40
+#define LF_SPEED_REDUCTION_STEP     2
 #define LF_INTEGRAL_MAX            40
 
 #define LF_SEARCH_LEFT_MOTOR      -30
@@ -98,14 +103,17 @@ static vehicle_control_ctx_t g_vc = {0};
 #define OA_CENTER_BACKUP_MM        220   /* si obstacle centre < 200 mm -> recule */
 #define OA_CENTER_TURN_OK_MM       220   /* pour pouvoir réavancer après pivot */
 
-#define OA_FORWARD_SPEED            18
-#define OA_FORWARD_SLOW             12
+#define OA_FORWARD_SPEED            50
+#define OA_FORWARD_SLOW             20
 
-#define OA_PIVOT_FAST               80   /* pivot sur place */
+#define OA_PIVOT_FAST               90   /* pivot sur place */
 #define OA_TURN_SOFT                30   /* correction douce */
 #define OA_TURN_BRAKE              -45
 
 #define OA_REVERSE_SPEED           -32
+
+#define OA_ATTEMPT_MAX          3     /* essais avant de tourner */
+#define OA_ATTEMPT_WINDOW_TICKS 300   /* fenêtre 3 sec (300 x 10 ms) */
 
 
 /*============================================================================
@@ -148,6 +156,11 @@ static void VehicleControl_ResetAutoState(void)
     g_vc.line_error_filt = 0;
     g_vc.line_error_prev = 0;
     g_vc.line_error_integral = 0;
+
+
+    g_vc.oa_attempt_count  = 0;
+    g_vc.oa_window_ticks   = 0;
+    g_vc.oa_was_advancing  = false;
 }
 
 /*
@@ -346,7 +359,7 @@ static void BuildLineFollowMotorCommand(motor_cmd_t *mcmd)
     }
 
     // Si la ligne est perdue, on lance une recherche temporaire
-    else if (g_vc.line_state == LINE_STATE_LOST)
+    else 
     {
         g_vc.line_lost_ticks++;
 
@@ -394,7 +407,7 @@ static void BuildObstacleAvoidMotorCommand(motor_cmd_t *mcmd)
     }
 
     /*
-     * TODO 4 : Mode évitement d'obstacle   (moi, javeiet vas le faire)
+     * TODO 4 : Mode évitement d'obstacle 
      *
      * Données disponibles :
      * - g_vc.prox.left_mm
@@ -434,19 +447,49 @@ static void BuildObstacleAvoidMotorCommand(motor_cmd_t *mcmd)
     } 
     
     // front obstocal check
-    else if (g_vc.prox.center_mm < OA_CENTER_BACKUP_MM)
-    {   
-        mcmd->left_cmd  = OA_REVERSE_SPEED;
-        mcmd->right_cmd = OA_REVERSE_SPEED;
+    if (g_vc.oa_attempt_count > 0)
+    {
+        g_vc.oa_window_ticks++;
+        if (g_vc.oa_window_ticks > OA_ATTEMPT_WINDOW_TICKS)
+        {
+            g_vc.oa_attempt_count  = 0;
+            g_vc.oa_window_ticks   = 0;
+            g_vc.oa_was_advancing  = false;
+        }
     }
 
+    /* --- Obstacle au centre --- */
+    if (g_vc.prox.center_valid && g_vc.prox.center_mm < OA_CENTER_BACKUP_MM)
+    {
+        /* Transition avance→recul = un essai */
+        if (g_vc.oa_was_advancing)
+        {
+            if (g_vc.oa_attempt_count == 0)
+                g_vc.oa_window_ticks = 0;   /* démarre la fenêtre */
+
+            g_vc.oa_attempt_count++;
+            g_vc.oa_was_advancing = false;
+        }
+
+        if (g_vc.oa_attempt_count >= OA_ATTEMPT_MAX)
+        {
+            /* 3 essais échoués : tourner à gauche */
+            mcmd->left_cmd  = OA_TURN_BRAKE;
+            mcmd->right_cmd = OA_TURN_SOFT;
+        }
+        else
+        {
+            mcmd->left_cmd  = OA_REVERSE_SPEED;
+            mcmd->right_cmd = OA_REVERSE_SPEED;
+        }
+    }
     // tourne à droite ou gauche
-    else if (g_vc.prox.right_mm < OA_SIDE_WARN_MM)
+    else if (g_vc.prox.right_valid && g_vc.prox.right_mm < OA_SIDE_WARN_MM)
     {
         mcmd->left_cmd = OA_TURN_SOFT;
         mcmd->right_cmd = OA_TURN_BRAKE;
     }
-    else if (g_vc.prox.left_mm < OA_SIDE_WARN_MM)
+    else if (g_vc.prox.left_valid  && g_vc.prox.left_mm  < OA_SIDE_WARN_MM)
     {
         mcmd->left_cmd  = OA_TURN_BRAKE;
         mcmd->right_cmd = OA_TURN_SOFT;
@@ -455,6 +498,7 @@ static void BuildObstacleAvoidMotorCommand(motor_cmd_t *mcmd)
     // avance
     else
     {
+        g_vc.oa_was_advancing = true; 
         mcmd->left_cmd = OA_FORWARD_SPEED;
         mcmd->right_cmd = OA_FORWARD_SPEED;
     }

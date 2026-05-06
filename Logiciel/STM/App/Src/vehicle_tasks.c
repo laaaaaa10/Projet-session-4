@@ -142,18 +142,18 @@ static line_state_t DecodeLineState(uint8_t raw)
     {
         case 0b0000000:  return LINE_STATE_LOST;
 
-        case 0b1000000:  g_line_error = -12; return LINE_STATE_RIGHT;
-        case 0b1100000:  g_line_error = -8; return LINE_STATE_RIGHT;
-        case 0b0100000:  g_line_error = -6;  return LINE_STATE_RIGHT;
-        case 0b0110000:  g_line_error = -4;  return LINE_STATE_RIGHT;
-        case 0b0010000:  g_line_error = -2;  return LINE_STATE_RIGHT;
-        case 0b0011000:  g_line_error = -1;  return LINE_STATE_RIGHT;
+        case 0b1000001:  g_line_error = -12; return LINE_STATE_RIGHT;
+        case 0b1100001:  g_line_error = -8; return LINE_STATE_RIGHT;
+        case 0b0100001:  g_line_error = -6;  return LINE_STATE_RIGHT;
+        case 0b0110001:  g_line_error = -4;  return LINE_STATE_RIGHT;
+        case 0b0010001:  g_line_error = -2;  return LINE_STATE_RIGHT;
+        case 0b0011001:  g_line_error = -1;  return LINE_STATE_RIGHT;
 
-        case 0b0001000:  g_line_error = 0;   return LINE_STATE_CENTER;
+        case 0b0001001:  g_line_error = 0;   return LINE_STATE_CENTER;
 
-        case 0b0001100:  g_line_error = 1;   return LINE_STATE_LEFT;
-        case 0b0000100:  g_line_error = 2;   return LINE_STATE_LEFT;
-        case 0b0000110:  g_line_error = 4;   return LINE_STATE_LEFT;
+        case 0b0001101:  g_line_error = 1;   return LINE_STATE_LEFT;
+        case 0b0000101:  g_line_error = 2;   return LINE_STATE_LEFT;
+        case 0b0000111:  g_line_error = 4;   return LINE_STATE_LEFT;
         case 0b0000010:  g_line_error = 6;   return LINE_STATE_LEFT;
         case 0b0000011:  g_line_error = 8;  return LINE_STATE_LEFT;
         case 0b0000001:  g_line_error = 12;  return LINE_STATE_LEFT;
@@ -583,13 +583,7 @@ static void Task_LineSensor(void *argument)
     {
         /*
          * TODO 2 :
-         * Lire le capteur de ligne.
-         *
-         * À faire :
-         * - prendre le mutex I2C3 avec xSemaphoreTake()
-         * - lire les 7 capteurs avec LineSensor_ReadRaw()
-         * - libérer le mutex avec xSemaphoreGive()
-         */
+         * Lire le capteur de ligne.*/
         raw = 0;
 
         if (xSemaphoreTake(g_i2c3_mutex, pdMS_TO_TICKS(5)) == pdTRUE)
@@ -600,12 +594,6 @@ static void Task_LineSensor(void *argument)
         /*
          * TODO 3 :
          * Décoder la valeur brute.
-         *
-         * À faire :
-         * - appeler DecodeLineState(raw)
-         * - mettre à jour VehicleDisplayData_SetLineData()
-         * - envoyer l'état au module de contrôle avec VehicleControl_SetLineState()
-         * - si la ligne est valide, envoyer l'erreur avec VehicleControl_SetLineError()
          */
 
         line_state = DecodeLineState(raw);
@@ -652,19 +640,8 @@ static void Task_ProximitySensors(void *argument)
     for (;;)
     {
         /*
-         * TODO 4 :    (moi, javeiet vas le faire)
+         * TODO 4 :
          * Lire les deux capteurs Sharp.
-         *
-         * À faire :
-         * - appeler ReadBothSharpRaw(&raw_left, &raw_right)
-         * - convertir raw_left/raw_right en mV avec SharpRawToMilliVolts()
-         * - convertir les mV en distance avec SHARP_2Y0A21_MilliVoltsToDistanceMm()
-         * - remplir prox.left_mm, prox.right_mm
-         * - remplir prox.left_valid, prox.right_valid
-         *
-         * Suggestion :
-         * Si la conversion échoue, considérer que l'objet est loin :
-         * distance = 500 mm, valid = true.
          */
         if (ReadBothSharpRaw(&raw_left, &raw_right))
         {
@@ -690,19 +667,8 @@ static void Task_ProximitySensors(void *argument)
 
         /*
          * TODO 5 :
-         * Lire le capteur ultrason central.
-         *
-         * À faire :
-         * - appeler RCWL1601_Trigger(&hrcwl)
-         * - attendre RCWL_WAIT_MS
-         * - appeler RCWL1601_Process(&hrcwl)
-         * - appeler RCWL1601_GetDistanceMm(&hrcwl, &dmm)
-         * - remplir prox.center_mm et prox.center_valid
-         *
-         * Suggestion :
-         * Si aucune distance n'est reçue, considérer que rien n'est devant :
-         * distance = 600 mm, valid = true.
-         */
+         * Lire le capteur ultrason central.*/
+         
         RCWL1601_Trigger(&hrcwl);
         vTaskDelay(pdMS_TO_TICKS(RCWL_WAIT_MS));
         if (RCWL1601_GetDistanceMm(&hrcwl, &dmm) == RCWL1601_OK)
@@ -718,12 +684,7 @@ static void Task_ProximitySensors(void *argument)
 
         /*
          * TODO 6 :
-         * Publier les données de proximité.
-         *
-         * À faire :
-         * - VehicleDisplayData_SetProximityData(&prox, mv_left, mv_right)
-         * - VehicleControl_SetProximityData(&prox)
-         */
+         * Publier les données de proximité.*/
 
         VehicleDisplayData_SetProximityData(&prox, mv_left, mv_right);
         VehicleControl_SetProximityData(&prox);
