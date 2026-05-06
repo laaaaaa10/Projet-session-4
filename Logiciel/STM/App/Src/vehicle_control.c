@@ -81,19 +81,19 @@ static vehicle_control_ctx_t g_vc = {0};
 #define LF_LOST_TIMEOUT_TICKS   500		//300 x 10 ms = 3000 ms = 3 s
 
 /* ===== LINE FOLLOW TUNING ===== */
-#define LF_SPEED_CENTER            20
-#define LF_SPEED_MIN               20
+#define LF_SPEED_CENTER            30
+#define LF_SPEED_MIN               10
 
-#define LF_KP                       6
+#define LF_KP                       8
 #define LF_KD                       3
-#define LF_KI                       1
+#define LF_KI                       2
 
-#define LF_CORR_MAX                40
-#define LF_SPEED_REDUCTION_STEP     2
+#define LF_CORR_MAX                60
+#define LF_SPEED_REDUCTION_STEP     1
 #define LF_INTEGRAL_MAX            40
 
-#define LF_SEARCH_LEFT_MOTOR      -30
-#define LF_SEARCH_RIGHT_MOTOR      30
+#define LF_SEARCH_LEFT_MOTOR      -20
+#define LF_SEARCH_RIGHT_MOTOR      20
 
 
 /* ===== OBSTACLE AVOID TUNING ===== */
@@ -313,9 +313,7 @@ static void BuildLineFollowMotorCommand(motor_cmd_t *mcmd)
     if (g_vc.line_state == LINE_STATE_LEFT || g_vc.line_state == LINE_STATE_RIGHT || g_vc.line_state == LINE_STATE_CENTER)
     {
         g_vc.line_seen_once = true;
-        g_vc.last_seen_dir = g_vc.line_state;
         g_vc.line_lost_ticks = 0;
-    
 
     /*
      * TODO 3 : Suiveur de ligne
@@ -352,6 +350,12 @@ static void BuildLineFollowMotorCommand(motor_cmd_t *mcmd)
             g_vc.line_error_filt = -LF_CORR_MAX;
 
         g_vc.line_error_prev = g_vc.line_error;
+
+        if (g_vc.line_error_filt > 0)
+            g_vc.last_seen_dir = LINE_STATE_LEFT;
+        else if (g_vc.line_error_filt < 0)
+            g_vc.last_seen_dir = LINE_STATE_RIGHT;
+    
 
         mcmd->left_cmd = clamp100(LF_SPEED_CENTER - g_vc.line_error_filt);
         mcmd->right_cmd = clamp100(LF_SPEED_CENTER + g_vc.line_error_filt);
