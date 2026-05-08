@@ -84,21 +84,21 @@ static vehicle_control_ctx_t g_vc = {0};
 #define LF_LOST_TIMEOUT_TICKS   300
 
 /* ===== LINE FOLLOW TUNING ===== */
-#define LF_SPEED_CENTER            65   //50
-#define LF_SPEED_MIN               5    //10
+#define LF_SPEED_CENTER            65  //50
+#define LF_SPEED_MIN               10    //10
 
-#define LF_KP                      9   //4
+#define LF_KP                      7   //4
 #define LF_KI                      5   //1
 #define LF_KD                      4   //2
 
-#define LF_CORR_MAX                175
+#define LF_CORR_MAX                150
 #define LF_SPEED_REDUCTION_STEP     1
-#define LF_INTEGRAL_MAX             4   //30
+#define LF_INTEGRAL_MAX             2   //30
 
-#define LF_SEARCH_LEFT_MOTOR      -125   //70
-#define LF_SEARCH_RIGHT_MOTOR      125
+#define LF_SEARCH_LEFT_MOTOR      -100   //70
+#define LF_SEARCH_RIGHT_MOTOR      100
 
-#define LF_REPLAY_TICKS   5   /* ticks où on répète la dernière cmd valide */
+#define LF_REPLAY_TICKS             2  // temp entre lighe perdue et essye de re trouver la ligne 
 
 
 /* ===== OBSTACLE AVOID TUNING ===== */
@@ -323,21 +323,7 @@ static void BuildLineFollowMotorCommand(motor_cmd_t *mcmd)
     
 
     /*
-     * TODO 3 : Suiveur de ligne
-     *
-     * Cas à gérer :
-     *
-     * 1. Ligne centrée / gauche / droite :
-     *    - utiliser g_vc.line_error_filt
-     *    - calculer une correction proportionnelle
-     *    - appliquer la correction gauche/droite
-     *    - remettre line_lost_ticks à 0
-     *
-     * 2. Ligne perdue :
-     *    - incrémenter line_lost_ticks
-     *    - si aucune ligne n'a jamais été vue : arrêt
-     *    - si timeout dépassé : arrêt
-     *    - sinon tourner dans la direction de la dernière ligne vue
+     * TODO 3 : Suiveur de ligne8
      */
 
         g_vc.line_error_integral += g_vc.line_error;
@@ -362,12 +348,12 @@ static void BuildLineFollowMotorCommand(motor_cmd_t *mcmd)
         mcmd->right_cmd = clamp100(LF_SPEED_CENTER + g_vc.line_error_filt);
         mcmd->coast = false;
 
-        /* ---- CORRECTION : sauvegarder la dernière commande valide ---- */
+        //sauvegarder la dernière commande valide 
         g_vc.last_valid_left_cmd  = mcmd->left_cmd;
         g_vc.last_valid_right_cmd = mcmd->right_cmd;
     }
 
-    // Si la ligne est perdue, on lance une recherche temporaire
+    // Si la ligne est perdue
     else
     {
         g_vc.line_lost_ticks++;
@@ -378,16 +364,7 @@ static void BuildLineFollowMotorCommand(motor_cmd_t *mcmd)
             return;
         }
 
-        /* Phase 1 : répéter la dernière commande valide quelques ticks */
-        if (g_vc.line_lost_ticks <= LF_REPLAY_TICKS)
-        {
-            mcmd->left_cmd  = g_vc.last_valid_left_cmd;
-            mcmd->right_cmd = g_vc.last_valid_right_cmd;
-            mcmd->coast = false;
-            return;
-        }
-
-        /* Phase 2 : pivoter vers le dernier côté vu */
+        // Recherche temporaire : tourner sur place selon le dernier côté vu
         if (g_vc.last_seen_dir == LINE_STATE_LEFT)
         {
             mcmd->left_cmd  = LF_SEARCH_LEFT_MOTOR;
@@ -426,38 +403,7 @@ static void BuildObstacleAvoidMotorCommand(motor_cmd_t *mcmd)
 
     /*
      * TODO 4 : Mode évitement d'obstacle 
-     *
-     * Données disponibles :
-     * - g_vc.prox.left_mm
-     * - g_vc.prox.center_mm
-     * - g_vc.prox.right_mm
-     *
-     * Validité :
-     * - g_vc.prox.left_valid
-     * - g_vc.prox.center_valid
-     * - g_vc.prox.right_valid
-     *
-     * Comportement minimal attendu :
-     *
-     * 1. Si aucun capteur valide :
-     *    arrêter.
-     *
-     * 2. Si obstacle proche au centre :
-     *    reculer ou pivoter.
-     *
-     * 3. Si obstacle proche à gauche :
-     *    tourner vers la droite.
-     *
-     * 4. Si obstacle proche à droite :
-     *    tourner vers la gauche.
-     *
-     * 5. Si tout est libre :
-     *    avancer.
-     *
-     * Utiliser les constantes OA_...
-     */
-
-    // sensor check
+    */
     if (!g_vc.prox.left_valid && !g_vc.prox.center_valid && !g_vc.prox.right_valid)
     {
         MotorCommand_Clear(mcmd);  /* aucun capteur valide : arrêt */
