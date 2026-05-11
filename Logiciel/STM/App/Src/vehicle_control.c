@@ -82,23 +82,24 @@ static vehicle_control_ctx_t g_vc = {0};
  *===========================================================================*/
 
 #define LF_LOST_TIMEOUT_TICKS   300
+#define LF_FINISHED_TIMEOUT_TICKS 10
 
 /* ===== LINE FOLLOW TUNING ===== */
 #define LF_SPEED_CENTER            65  //50
 #define LF_SPEED_MIN               10    //10
 
 #define LF_KP                      7   //4
-#define LF_KI                      5   //1
+#define LF_KI                      6   //1
 #define LF_KD                      4   //2
 
 #define LF_CORR_MAX                150
 #define LF_SPEED_REDUCTION_STEP     1
 #define LF_INTEGRAL_MAX             2   //30
 
-#define LF_SEARCH_LEFT_MOTOR      -100   //70
-#define LF_SEARCH_RIGHT_MOTOR      100
+#define LF_SEARCH_LEFT_MOTOR      -95   //70
+#define LF_SEARCH_RIGHT_MOTOR      95
 
-#define LF_REPLAY_TICKS             2  // temp entre lighe perdue et essye de re trouver la ligne 
+#define LF_REPLAY_TICKS             1  // temp entre lighe perdue et essye de re trouver la ligne 
 
 
 /* ===== OBSTACLE AVOID TUNING ===== */
@@ -364,16 +365,28 @@ static void BuildLineFollowMotorCommand(motor_cmd_t *mcmd)
             return;
         }
 
-        // Recherche temporaire : tourner sur place selon le dernier côté vu
-        if (g_vc.last_seen_dir == LINE_STATE_LEFT)
+        if (g_vc.last_seen_dir == LINE_STATE_CENTER ||
+            (g_vc.last_seen_dir == LINE_STATE_LEFT  && g_vc.line_error_prev <= 1) ||
+            (g_vc.last_seen_dir == LINE_STATE_RIGHT && g_vc.line_error_prev >= -1))
         {
-            mcmd->left_cmd  = LF_SEARCH_LEFT_MOTOR;
-            mcmd->right_cmd = LF_SEARCH_RIGHT_MOTOR;
+            // si sa fais plus de X sec
+            if (g_vc.line_lost_ticks >  LF_FINISHED_TIMEOUT_TICKS)
+            {
+                MotorCommand_Clear(mcmd);
+                return;
+            }
+            mcmd->left_cmd  = LF_SPEED_CENTER;
+            mcmd->right_cmd = LF_SPEED_CENTER;
         }
-        else
+        else if (g_vc.last_seen_dir == LINE_STATE_RIGHT)
         {
             mcmd->left_cmd  = LF_SEARCH_RIGHT_MOTOR;
             mcmd->right_cmd = LF_SEARCH_LEFT_MOTOR;
+        }
+        else
+        {
+            mcmd->left_cmd  = LF_SEARCH_LEFT_MOTOR;
+            mcmd->right_cmd = LF_SEARCH_RIGHT_MOTOR;
         }
         mcmd->coast = false;
     }
