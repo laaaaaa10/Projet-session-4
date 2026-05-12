@@ -85,18 +85,18 @@ static vehicle_control_ctx_t g_vc = {0};
 #define LF_FINISHED_TIMEOUT_TICKS 10
 
 /* ===== LINE FOLLOW TUNING ===== */
-#define LF_SPEED_CENTER            65  //50
+#define LF_SPEED_CENTER            65  //je pense la limite est 100
 #define LF_SPEED_MIN               10    //10
 
-#define LF_KP                      7   //4
-#define LF_KI                      6   //1
-#define LF_KD                      4   //2
+#define LF_KP                      7
+#define LF_KI                      6
+#define LF_KD                      4
 
-#define LF_CORR_MAX                150
-#define LF_SPEED_REDUCTION_STEP     1
-#define LF_INTEGRAL_MAX             2   //30
+#define LF_CORR_MAX                150 //je pense la limite est 100
+#define LF_SPEED_REDUCTION_STEP    1
+#define LF_INTEGRAL_MAX            2   //30
 
-#define LF_SEARCH_LEFT_MOTOR      -95   //70
+#define LF_SEARCH_LEFT_MOTOR       -95   //70
 #define LF_SEARCH_RIGHT_MOTOR      95
 
 #define LF_REPLAY_TICKS             1  // temp entre lighe perdue et essye de re trouver la ligne 
