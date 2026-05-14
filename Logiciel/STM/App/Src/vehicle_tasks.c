@@ -676,9 +676,16 @@ static void Task_ProximitySensors(void *argument)
         /*
          * TODO 5 :
          * Lire le capteur ultrason central.*/
-         
+        
+        prox.center_valid = false;
+        prox.center_mm = 0;
+        
         RCWL1601_Trigger(&hrcwl);
         vTaskDelay(pdMS_TO_TICKS(RCWL_WAIT_MS));
+        
+        /* Traiter les timeouts et obtenir les données */
+        RCWL1601_Process(&hrcwl);
+        
         if (RCWL1601_GetDistanceMm(&hrcwl, &dmm) == RCWL1601_OK)
         {
             prox.center_mm = dmm;
@@ -686,8 +693,25 @@ static void Task_ProximitySensors(void *argument)
         }
         else
         {
-            prox.center_mm = 600;
-            prox.center_valid = true;
+            /* Deuxième tentative après une brève réinitialisation */
+            RCWL1601_ClearData(&hrcwl);
+            vTaskDelay(pdMS_TO_TICKS(5));
+            
+            RCWL1601_Trigger(&hrcwl);
+            vTaskDelay(pdMS_TO_TICKS(RCWL_WAIT_MS));
+            RCWL1601_Process(&hrcwl);
+            
+            if (RCWL1601_GetDistanceMm(&hrcwl, &dmm) == RCWL1601_OK)
+            {
+                prox.center_mm = dmm;
+                prox.center_valid = true;
+            }
+            else
+            {
+                /* Échec des deux tentatives - données invalides */
+                RCWL1601_ClearData(&hrcwl);
+                prox.center_valid = false;
+            }
         }
 
         /*

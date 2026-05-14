@@ -109,17 +109,17 @@ static vehicle_control_ctx_t g_vc = {0};
 #define OA_CENTER_BACKUP_MM        220   /* si obstacle centre < 200 mm -> recule */
 #define OA_CENTER_TURN_OK_MM       220   /* pour pouvoir réavancer après pivot */
 
-#define OA_FORWARD_SPEED            50
-#define OA_FORWARD_SLOW             20
+#define OA_FORWARD_SPEED           50
+#define OA_FORWARD_SLOW            30
 
-#define OA_PIVOT_FAST               90   /* pivot sur place */
-#define OA_TURN_SOFT                30   /* correction douce */
-#define OA_TURN_BRAKE              -45
+#define OA_PIVOT_FAST              100   /* pivot sur place */
+#define OA_TURN_SOFT               65   /* correction douce */
+#define OA_TURN_BRAKE             -45
 
-#define OA_REVERSE_SPEED           -32
+#define OA_REVERSE_SPEED          -50
 
-#define OA_ATTEMPT_MAX          3     /* essais avant de tourner */
-#define OA_ATTEMPT_WINDOW_TICKS 300   /* fenêtre 3 sec (300 x 10 ms) */
+#define OA_ATTEMPT_MAX             3     /* essais avant de tourner */
+#define OA_ATTEMPT_WINDOW_TICKS    300   /* fenêtre 3 sec (300 x 10 ms) */
 
 
 /*============================================================================
